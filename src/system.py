@@ -14,7 +14,7 @@ import asyncio, threading
 # Extron Library imports
 
 # Project imports
-from modules.project.websockets.asyncio.server import serve, ServerConnection
+from modules.libraries.websockets.asyncio.server import serve, ServerConnection
 
 def Initialize():
     #Create websocket listen thread
