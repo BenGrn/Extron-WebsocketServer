@@ -13,7 +13,7 @@ from .event import Event
 
 @dataclass
 class ServiceUpdateEvent:
-    device: 'ServiceBase'
+    service: 'ServiceBase'
 
 class ServiceBase(ABC):
     def __init__(self, name: str = None):
@@ -22,7 +22,7 @@ class ServiceBase(ABC):
         self.id: str = str(uuid5(NAMESPACE_X500, name))
         self.name: str = name
         self.type = type(self).__name__
-        self.device_update: Event = Event(self)
+        self.service_update: Event = Event(self)
         self.json_excluded_properties = [
             'device_update',
             'json_excluded_properties'
@@ -35,14 +35,14 @@ class ServiceBase(ABC):
     def request_update(self):
         if datetime.now() - self.__last_update > self.__update_interval:
             self.__last_update = datetime.now()
-            self.device_update.invoke(self, ServiceUpdateEvent(self))
+            self.service_update.invoke(self, ServiceUpdateEvent(self))
         elif self.__update_thread == None:
             self.__update_thread = Thread(target=self.__update, daemon=True)
             self.__update_thread.start()
 
     def __update(self):
         sleep(self.__update_interval.total_seconds() - (datetime.now() - self.__last_update).total_seconds())
-        self.device_update.invoke(self, ServiceUpdateEvent(self))
+        self.service_update.invoke(self, ServiceUpdateEvent(self))
         self.__update_thread = None
     
     def update_property(self, property: str, value):
