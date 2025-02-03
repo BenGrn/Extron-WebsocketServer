@@ -1,9 +1,10 @@
 from dataclasses import dataclass
+from http import HTTPStatus
 import json
-import asyncio, threading, logging, signal
+import asyncio, threading, logging
 from typing import List
 from modules.intravision.core import System, DeviceBase, ServiceBase, SystemUpdateEvent, DeviceUpdateEvent, ServiceUpdateEvent
-from modules.libraries.websockets.asyncio.server import serve, ServerConnection
+from modules.libraries.websockets.asyncio.server import serve, ServerConnection, Request
 
 @dataclass
 class WebsocketMessage:
@@ -93,12 +94,21 @@ class WebsocketService(ServiceBase):
         self._stop = threading.Event()
         stop = asyncio.get_event_loop().run_in_executor(None, self._stop.wait)
         #self._loop.add_signal_handler(signal.SIGTERM, stop.set_result, None) Linux Only
-        
-        logging.info(f'Websocket server started on port {self.port}')
         self._loop.run_until_complete(self._listen(stop))
+    
+    async def _process_request(self, connection: ServerConnection, request: Request):
+        request_headers = request.headers
+        path = request.path
+        if request_headers.get("Connection", None) == "Upgrade":
+            return None
+        if path == "/Systems":
+           return connection.respond(HTTPStatus.OK, json.dumps(self._systems))
+        return connection.respond(HTTPStatus.NOT_FOUND, "Path not found")
+
 
     async def _listen(self, stop) -> None:
-        async with serve(self.behaviour, self.host, self.port):
+        logging.info(f'Websocket server started on port {self.port}')
+        async with serve(self.behaviour, self.host, self.port, process_request = self._process_request):
             await stop
         logging.info(f'Websocket on port {self.port} stopped')
 
