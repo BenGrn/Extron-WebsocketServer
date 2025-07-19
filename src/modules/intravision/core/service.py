@@ -56,26 +56,24 @@ class ServiceBase(ABC):
             setattr(self, property, value)
             self.request_update()
 
-    def __repr__(self):
-        return json.dumps(self, cls = ServiceSerialization)
+    def reprJSON(self) -> Dict:
+        d = {self._snake_to_pascal(k): v for k, v in self.__dict__.items() if k not in self.json_excluded_properties and not k.startswith('_')}.copy()
+        for key, value in self.__class__.__dict__.items():
+            if isinstance(value, property):
+                d[self._snake_to_pascal(key)] = getattr(self, key)
+        return d
     
-class ServiceSerialization(json.JSONEncoder):
-    def default(self, device: ServiceBase):
-        def get_object_dict(obj: ServiceBase):
-            d = {self.snake_to_pascal(k): v for k, v in obj.__dict__.items() if k not in obj.json_excluded_properties and not k.startswith('_')}.copy()
-            for key, value in obj.__class__.__dict__.items():
-                if isinstance(value, property):
-                    d[self.snake_to_pascal(key)] = getattr(obj, key)
-            return d
-        return get_object_dict(device)
-    
-    def snake_to_pascal(self, s):
+    def _snake_to_pascal(self, s):
         a = s.split('_')
         a[0] = a[0].title()
         if len(a) > 1:
             a[1:] = [u.title() for u in a[1:]]
         return ''.join(a)
     
+    def __repr__(self):
+        return str(self.reprJSON())
+    
+class ServiceSerialization(json.JSONEncoder):
     @classmethod
     def deserialize_device(cls, jdict: Dict):
         if 'Type' in jdict:
